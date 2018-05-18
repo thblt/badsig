@@ -1,0 +1,76 @@
+#+TITLE: Badsig
+
+This repository is a collection of text files along with GnuPG
+signatures, to facilitate testing of automated signature verification
+software.  If you plan to use this repository, please read the full
+README before proceeding and use your best judgment when implementing
+these cases.
+
+Please notice that it's *your* job to verify that the contents of this
+repository work as described, as expected or as would make sense, that
+the testing situations it describes are correctly described and match
+your real-world situations you'll be facing, and so on.  As the famous
+license says, I'm sharing this in the hope that it may be useful to
+others, but *I don't guarantee anything about it*, not even that it does
+what it pretends to do, or that it makes any sense.
+
+* The signatures
+
+You probably want to use the signed files in the =signatures= directory.
+
+The file names are made of three components, and are to be
+read as follows:
+
+ - =Valid= or =Invalid= :: Whether the signature is valid or not.  In
+      =Invalid= file, the message has been tampered with after the
+      signature.
+ - =KOK= or =KEXP= :: Whether the key is currently valid or has expired.
+ - =SOK= or =SEXP= :: Whether the /signature/ is currently valid or has
+      expired (yes, signatures do expire)
+
+There's also two special cases:
+
+ - =Unsigned= :: as the name suggests, this file isn't signed.
+ - =Corrupted= :: the signature has been damaged and no verification can take place.
+
+* Using the cases
+
+It takes more than just verifying each case to test all possible situation.  A good test suite using these files would need to at least:
+
+ - Verify the files *without* the public keys in the keyring.  Having
+   signed contents but no public key is a very common case.
+
+ - Revoke the public keys, or the signature subkey, before verifying again.
+
+ - Change the keys' ownertrust to make sure your code correctly rejects signature from untrusted keys.
+
+ A good test suite using these files would look like:
+
+ #+BEGIN_EXAMPLE
+ gnupg --delete-key badsig@example.com
+ gnupg --delete-key badsig-expired@example.com
+ run_tests(case=missing-keys)
+
+ gnupg --import gnupg/badsig.key
+ gnupg --import gnupg/badsig-expired.key
+ run_tests(case=default)
+
+ gnupg --import-ownertrust < gnupg/never.ownertrust
+ run_tests(case=untrusted)
+ #+END_EXAMPLE
+
+* Security information
+
+You should obviously not blindly trust random public keys from the
+internet.
+
+Both the keys UIDs are on the standard example domain [[http://example.com][example.com]] as
+described in [[https://www.iana.org/go/rfc2606][RFC 2606]] and [[https://tools.ietf.org/html/rfc6761][RFC 6761]], so they won't conflict with any
+actual email addresses.
+
+* Known limitations
+
+This was written for parsing the output of =git verify-[tag|commit]
+--raw=.  Git accepts only a single signer per object, so all these
+files are signed with a single key.  Would you need to handle multiple
+signers, feel free to update =mksigns.sh= and send a PR!
